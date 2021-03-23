@@ -103,9 +103,6 @@ void PT6302::writeDCRAM(const unsigned int start, uint8_t bytes[], size_t length
     command[0] = rotateByte(start - 1) + 0x08;
     for (size_t i = 0; i < length; i++)
     {
-        Serial.println(bytes[i], HEX);
-        Serial.println(rotateByte(bytes[i]), HEX);
-
         command[i + 1] = rotateByte(bytes[i]);
     }
 
