@@ -173,7 +173,7 @@ private:
      * @param in String to be rotated, original will not be affected    
      * @returns the reversed string  
      */
-    char *rotateString(char *in);
+    char *rotateString(const char *in);
 };
 
 #endif

@@ -44,14 +44,14 @@ void PT6302::reset()
     return;
 }
 
-void PT6302::print(const char c[], bool overwrite = true)
+void PT6302::print(const char c[], bool overwrite)
 {
     const int length = strlen(c);
     this->print((this->digits - (length - 1)), c, overwrite);
     return;
 }
 
-void PT6302::print(const unsigned int start, const char c[], bool overwrite = true)
+void PT6302::print(const unsigned int start, const char c[], bool overwrite)
 {
     const int length = strlen(c);
     char *result = new char[length + 1]();
@@ -99,7 +99,7 @@ void PT6302::writeDCRAM(const unsigned int start, uint8_t byte)
 
 void PT6302::writeDCRAM(const unsigned int start, uint8_t bytes[], size_t length)
 {
-    uint8_t command[length + 1] = {0x00};
+    uint8_t *command = new uint8_t[length + 1];
     command[0] = rotateByte(start - 1) + 0x08;
     for (size_t i = 0; i < length; i++)
     {
@@ -112,7 +112,7 @@ void PT6302::writeDCRAM(const unsigned int start, uint8_t bytes[], size_t length
 
 void PT6302::writeCGRAM(const unsigned int target, uint8_t bytes[5])
 {
-    uint8_t command[5 + 1] = {0x00};
+    uint8_t *command = new uint8_t[5 + 1];
 
     command[0] = rotateByte(target) + 0x04;
     for (size_t i = 0; i < 5; i++)
@@ -126,7 +126,7 @@ void PT6302::writeCGRAM(const unsigned int target, uint8_t bytes[5])
 
 void PT6302::writeADRAM(const unsigned int start, uint8_t byte)
 {
-    uint8_t command[2] = {0x00};
+    uint8_t *command = new uint8_t[2];
     command[0] = rotateByte(start - 1) + 0x0c;
     command[1] = byte;
     this->sendBytes(command, 2);
@@ -259,7 +259,7 @@ uint8_t PT6302::rotateByte(uint8_t in)
     return result;
 }
 
-char *PT6302::rotateString(char *in)
+char *PT6302::rotateString(const char *in)
 {
     char *result = new char[strlen(in) + 1]();
     size_t j = 0;
