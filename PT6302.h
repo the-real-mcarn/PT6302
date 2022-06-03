@@ -56,8 +56,15 @@ public:
     void reset();
 
     /**
+     * Print something in the center of the display
+     * @param c String to print
+     * @param overwrite Wether or not the print should clear everything else on the display
+     */
+    void center(const char c[], bool overwrite = true);
+
+    /**
      * Print something on the display at position start.
-     * @param start Position to start printing to
+     * @param start Position to start printing to (first digit is 0)
      * @param c String to print
      * @param overwrite Wether or not the print should clear everything else on the display
      */

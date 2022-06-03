@@ -1,10 +1,10 @@
 /**
  * @file PT6302.cpp
  * Main source file for PT6302 library.
- * 
+ *
  * Arduino library for communicating with the Princeton Technology PT6302 VFD Driver/Controller IC with Character RAM
  * This library only includes the ASCII compatible characters, all others will have to be printed using the hex codes in the datasheet
- * 
+ *
  * Copyright (c) 2021 Arne van Iterson
  */
 
@@ -21,6 +21,7 @@ PT6302::PT6302(PT6302::Pin CLKB, PT6302::Pin RSTB, PT6302::Pin CSB, PT6302::Pin 
 
 void PT6302::init()
 {
+    // Set all pins to output
     pinMode(this->CLKB, OUTPUT);
     pinMode(this->RSTB, OUTPUT);
     pinMode(this->CSB, OUTPUT);
@@ -44,49 +45,70 @@ void PT6302::reset()
     return;
 }
 
+void PT6302::center(const char c[], bool overwrite)
+{
+    // Get the length of the input
+    uint8_t length = strlen(c);
+    // Center the text
+    unsigned int start = floor((this->digits - length) / 2.0);
+    this->print(start, c, overwrite);
+}
+
 void PT6302::print(const char c[], bool overwrite)
 {
-    const int length = strlen(c);
-    this->print((this->digits - (length - 1)), c, overwrite);
+    // Default printing position to the first digit
+    this->print(0, c, overwrite);
     return;
 }
 
 void PT6302::print(const unsigned int start, const char c[], bool overwrite)
 {
-    const int length = strlen(c);
-    char *result = new char[length + 1]();
-    result = rotateString(c);
+    // Get the length of the input
+    uint8_t length = strlen(c);
 
-    uint8_t data[this->digits];
+    // Make a new array to keep the data in, this is the size of the display
+    uint8_t *data = new uint8_t[this->digits];
+    memset(data, 0x20, this->digits);
 
-    for (size_t i = 0; i < length; i++)
+    // Reverse the input and put it in the new array
+    for (int8_t i = length; i > 0; i--)
     {
-        data[i] = result[i];
+        // Serial.print(c[i - 1]);
+        // Off by one is because i needs to be an array index
+        if (overwrite)
+        {
+            data[this->digits - i - start] = c[i - 1];
+        }
+        else
+        {
+            data[length - i] = c[i - 1];
+        }
     }
 
     if (overwrite)
     {
-        for (size_t i = length; i < digits; i++)
-        {
-            data[i] = 0x20;
-        }
-        this->writeDCRAM(start, data, this->digits);
+        // Send it out
+        this->writeDCRAM(0, data, this->digits);
     }
     else
     {
+        // Send it out
         this->writeDCRAM(start, data, length);
     }
+
+    delete[] data;
     return;
 }
 
 void PT6302::clear()
 {
-    uint8_t data[this->digits];
-    for (size_t i = 0; i < this->digits; i++)
-    {
-        data[i] = 0x20;
-    }
-    this->writeDCRAM(1, data, this->digits);
+    // Create buffer full of spaces (0x20)
+    uint8_t *data = new uint8_t[this->digits];
+    memset(data, 0x20, this->digits);
+
+    // Send it
+    this->writeDCRAM(0, data, this->digits);
+    delete[] data;
     return;
 }
 
@@ -97,30 +119,68 @@ void PT6302::writeDCRAM(const unsigned int start, uint8_t byte)
     return;
 };
 
-void PT6302::writeDCRAM(const unsigned int start, uint8_t bytes[], size_t length)
+void PT6302::writeDCRAM(const unsigned int startd, uint8_t bytes[], size_t length)
 {
-    uint8_t *command = new uint8_t[length + 1];
-    command[0] = rotateByte(start - 1) + 0x08;
-    for (size_t i = 0; i < length; i++)
+    // Reverse start
+    int start = this->digits - length - startd;
+
+    // Create an offset if the text goes off screen, the entire array has to be shifted by this because the screen works from right to left
+    // Value is -1 by default to account for the start byte added later
+    short offset = -1;
+
+    // Check if the text goes off screen
+    if (start < 0)
     {
-        command[i + 1] = rotateByte(bytes[i]);
+        offset = offset + abs(start);
+        length = length + start;
+        start = 0;
     }
 
-    this->sendBytes(command, (length + 1));
+    // Need to add a start byte to input
+    length++;
+
+    // Create command buffer and set it to 0
+    uint8_t *command = new uint8_t[length];
+    memset(command, 0, length);
+
+    // Add start byte
+    command[0] = rotateByte(start) + 0x08;
+
+    // Add input to command buffer
+    for (size_t i = 1; i < length; i++)
+    {
+        // Command buffer is offset by one, the input buffer is not
+        // Offset is applied if input goes off screen
+        command[i] = rotateByte(bytes[i + offset]);
+    }
+
+    // Send out
+    this->sendBytes(command, (length));
+
+    // Delete command buffer
+    delete[] command;
     return;
 }
 
 void PT6302::writeCGRAM(const unsigned int target, uint8_t bytes[5])
 {
+    // Input data + start byte
     uint8_t *command = new uint8_t[5 + 1];
 
+    // Start byte
     command[0] = rotateByte(target) + 0x04;
+
+    // Input data
     for (size_t i = 0; i < 5; i++)
     {
         command[i + 1] = bytes[i];
     }
 
+    // Send out
     this->sendBytes(command, (5 + 1));
+
+    // Delete command buffer
+    delete[] command;
     return;
 }
 
@@ -130,6 +190,7 @@ void PT6302::writeADRAM(const unsigned int start, uint8_t byte)
     command[0] = rotateByte(start - 1) + 0x0c;
     command[1] = byte;
     this->sendBytes(command, 2);
+    delete[] command;
     return;
 }
 
@@ -267,6 +328,6 @@ char *PT6302::rotateString(const char *in)
     {
         result[j++] = in[i];
     }
-
     return result;
+    delete[] result;
 }
